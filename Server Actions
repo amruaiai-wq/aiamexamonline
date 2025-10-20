@@ -1,0 +1,55 @@
+'use server';
+
+import { redirect } from 'next/navigation';
+import { auth } from './lib/auth';
+import { prisma } from './lib/prisma';
+
+interface UserAnswers {
+  [questionId: string]: string; // key คือ ID ของคำถาม, value คือคำตอบที่เลือก
+}
+
+/**
+ * Server Action สำหรับการส่งคำตอบข้อสอบ
+ * @param examId - ID ของข้อสอบที่ทำ
+ * @param answers - Object คำตอบของผู้ใช้
+ */
+export async function submitExam(examId: string, answers: UserAnswers) {
+  // 1. ตรวจสอบว่าผู้ใช้ Login หรือยัง
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Error('กรุณาเข้าสู่ระบบก่อนส่งข้อสอบ');
+  }
+  const userId = session.user.id;
+
+  // 2. ดึงข้อสอบและคำตอบที่ถูกต้องจากฐานข้อมูล
+  const exam = await prisma.exam.findUnique({
+    where: { id: examId },
+    include: { questions: true },
+  });
+
+  if (!exam) {
+    throw new Error('ไม่พบข้อสอบ');
+  }
+
+  // 3. คำนวณคะแนน
+  let score = 0;
+  for (const question of exam.questions) {
+    if (answers[question.id] === question.correctAnswer) {
+      score++;
+    }
+  }
+
+  // 4. บันทึกผลสอบลงในฐานข้อมูล
+  const result = await prisma.examResult.create({
+    data: {
+      userId: userId,
+      examId: examId,
+      score: score,
+      totalQuestions: exam.questions.length,
+      answers: answers, // บันทึกคำตอบของผู้ใช้เป็น JSON
+    },
+  });
+
+  // 5. Redirect ไปยังหน้าผลสอบ
+  redirect(`/result/${result.id}`);
+}
