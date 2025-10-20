@@ -1,1 +1,90 @@
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { checkSubscription } from "@/lib/subscription";
+import Paywall from "@/components/Paywall";
+import { notFound } from "next/navigation";
+
+// หน้านี้เป็น Server Component ที่แสดงผลคะแนน และเฉลยตามสิทธิ์ของผู้ใช้
+export default async function ResultPage({ params }: { params: { id: string } }) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  // 1. ดึงข้อมูลผลสอบจาก DB
+  const examResult = await prisma.examResult.findUnique({
+    where: { id: params.id, userId: userId }, // ตรวจสอบว่าเป็นเจ้าของผลสอบจริง
+  });
+
+  if (!examResult) {
+    notFound(); // ถ้าไม่เจอผลสอบ หรือไม่ใช่ของ user นี้
+  }
+
+  // 2. ดึงข้อมูลคำถามและเฉลยของข้อสอบชุดนั้น
+  const examWithQuestions = await prisma.exam.findUnique({
+    where: { id: examResult.examId },
+    include: {
+      questions: {
+        orderBy: { order: 'asc' },
+      },
+    },
+  });
+  
+  // 3. ตรวจสอบสถานะ Premium
+  const isPremium = await checkSubscription();
+
+  // จัดรูปแบบข้อมูลคำตอบของผู้ใช้
+  const userAnswers = examResult.answers as Record<string, string>;
+
+  return (
+    <div>
+      <div className="bg-white p-8 rounded-lg shadow-md mb-8 text-center">
+        <h1 className="text-2xl font-bold mb-2">ผลการสอบ: {examWithQuestions?.title}</h1>
+        <p className="text-5xl font-bold text-blue-600">
+          {examResult.score}
+          <span className="text-3xl text-gray-500"> / {examResult.totalQuestions}</span>
+        </p>
+        <p className="text-lg mt-2">
+          ทำเมื่อ: {new Date(examResult.completedAt).toLocaleString('th-TH')}
+        </p>
+      </div>
+
+      <div className="relative">
+        <h2 className="text-xl font-bold mb-4">เฉลยข้อสอบ</h2>
+        
+        {/* ส่วนที่แสดงเฉลย */}
+        <div className={!isPremium ? "blur-sm" : ""}>
+          <div className="space-y-6">
+            {examWithQuestions?.questions.map((q, index) => (
+              <div key={q.id} className="p-4 border rounded-lg bg-gray-50">
+                <p className="font-semibold">{index + 1}. {q.question}</p>
+                <div className="mt-2 space-y-1">
+                  {(q.options as string[]).map(option => {
+                    const isCorrect = option === q.correctAnswer;
+                    const isUserAnswer = userAnswers[q.id] === option;
+                    let optionClass = "p-2 rounded ";
+                    if(isCorrect) {
+                        optionClass += "bg-green-200 border border-green-400"; // เฉลยที่ถูก
+                    } else if (isUserAnswer) {
+                        optionClass += "bg-red-200 border border-red-400"; // ที่ผู้ใช้ตอบผิด
+                    }
+                    return <div key={option} className={optionClass}>{option}</div>;
+                  })}
+                </div>
+                {/* แสดงคำอธิบายเฉลย */}
+                {isPremium && (
+                   <div className="mt-4 p-3 bg-blue-50 border-l-4 border-blue-500">
+                        <h4 className="font-bold">คำอธิบาย:</h4>
+                        <p>{q.explanation}</p>
+                   </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 4. ถ้าไม่ใช่ Premium, แสดง Paywall ทับ */}
+        {!isPremium && <Paywall />}
+      </div>
+    </div>
+  );
+}
 
