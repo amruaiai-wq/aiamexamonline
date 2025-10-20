@@ -1,0 +1,21 @@
+import Link from "next/link";
+
+export default function Paywall() {
+  return (
+    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-4 rounded-lg">
+      <div className="max-w-md">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-yellow-500 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+        <h3 className="text-2xl font-bold">ปลดล็อกเฉลยและคำอธิบาย</h3>
+        <p className="text-gray-600 mt-2 mb-6">
+          อัพเกรดเป็น Premium เพื่อดูเฉลยละเอียดทุกข้อ, เข้าถึงแดชบอร์ดสถิติส่วนตัว,
+          และฟีเจอร์อื่นๆ อีกมากมาย!
+        </p>
+        <Link href="/pricing" className="bg-green-500 text-white px-8 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
+          ดูแพ็กเกจ Premium
+        </Link>
+      </div>
+    </div>
+  );
+}
