@@ -1,0 +1,40 @@
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
+import { prisma } from "./prisma";
+
+// ไฟล์นี้ใช้สำหรับตั้งค่า NextAuth.js
+// เราใช้ PrismaAdapter เพื่อให้ NextAuth.js ทำงานร่วมกับฐานข้อมูลผ่าน Prisma ได้โดยอัตโนมัติ
+// และตั้งค่า Provider สำหรับการ Login เช่น Google
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
+    // สามารถเพิ่ม Provider อื่นๆ ได้ที่นี่ เช่น Credentials, Facebook etc.
+  ],
+  session: {
+    strategy: "jwt",
+  },
+  callbacks: {
+    // Callback นี้จะถูกเรียกเมื่อมีการสร้างหรืออัปเดต JWT token
+    // เราเพิ่ม userId เข้าไปใน token เพื่อให้สามารถเข้าถึงได้ง่ายในที่ต่างๆ
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    // Callback นี้จะถูกเรียกเมื่อมีการสร้างหรืออัปเดต session
+    // เราเพิ่ม userId จาก token เข้าไปใน session object
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.id as string;
+      }
+      return session;
+    },
+  },
+});
