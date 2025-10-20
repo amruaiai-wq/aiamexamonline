@@ -1,0 +1,73 @@
+import { prisma } from '@/lib/prisma';
+import { stripe } from '@/lib/stripe';
+import { headers } from 'next/headers';
+import type { Stripe } from 'stripe';
+
+// API Route นี้ทำหน้าที่รับ event ที่ส่งมาจาก Stripe
+// เช่น เมื่อมีการชำระเงินสำเร็จ, หรือยกเลิก subscription
+// เพื่อนำมาอัปเดตข้อมูลในฐานข้อมูลของเรา
+
+export async function POST(req: Request) {
+  const body = await req.text();
+  const signature = headers().get('Stripe-Signature') as string;
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+
+  let event: Stripe.Event;
+
+  try {
+    event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+  } catch (err: any) {
+    console.error(`❌ Error message: ${err.message}`);
+    return new Response(`Webhook Error: ${err.message}`, { status: 400 });
+  }
+
+  const session = event.data.object as Stripe.Checkout.Session;
+
+  // จัดการกับ Event ประเภทต่างๆ
+  switch (event.type) {
+    // Event นี้จะเกิดเมื่อ user ชำระเงินสำหรับ subscription ครั้งแรกสำเร็จ
+    case 'checkout.session.completed': {
+      const subscription = await stripe.subscriptions.retrieve(
+        session.subscription as string
+      );
+      
+      if (!session?.metadata?.userId) {
+        return new Response('User ID not found in session metadata', { status: 400 });
+      }
+
+      await prisma.subscription.create({
+        data: {
+          userId: session.metadata.userId,
+          stripeCustomerId: subscription.customer as string,
+          stripePriceId: subscription.items.data[0]?.price.id,
+          status: subscription.status,
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        },
+      });
+      break;
+    }
+    
+    // Event นี้จะเกิดเมื่อมีการต่ออายุ subscription หรือมีการเปลี่ยนแปลง
+    case 'invoice.payment_succeeded': {
+      const subscription = await stripe.subscriptions.retrieve(
+        session.subscription as string
+      );
+        
+      await prisma.subscription.update({
+        where: {
+          stripeCustomerId: subscription.customer as string,
+        },
+        data: {
+          status: subscription.status,
+          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        },
+      });
+      break;
+    }
+
+    default:
+      console.warn(`Unhandled event type: ${event.type}`);
+  }
+
+  return new Response(null, { status: 200 });
+}
