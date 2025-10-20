@@ -1,0 +1,13 @@
+import { PrismaClient } from '@prisma/client';
+
+// ป้องกันการสร้าง PrismaClient instance ใหม่ทุกครั้งในระหว่าง development (hot-reloading)
+// ซึ่งจะช่วยป้องกันการเกิด connection pool ที่มากเกินไป
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: ['query'],
+  });
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
