@@ -1,0 +1,46 @@
+import { auth } from './auth';
+import { prisma } from './prisma';
+
+// ระยะเวลาเผื่อ (Grace Period) 1 วัน
+const DAY_IN_MS = 86_400_000;
+
+/**
+ * ฟังก์ชันนี้เป็นหัวใจสำคัญของ Freemium Logic
+ * ทำหน้าที่ตรวจสอบสถานะการเป็นสมาชิก Premium ของผู้ใช้ที่กำลัง login อยู่
+ * @returns {Promise<boolean>} - คืนค่า true ถ้าเป็น Premium, false ถ้าไม่ใช่
+ */
+export const checkSubscription = async (): Promise<boolean> => {
+  // 1. ดึงข้อมูล session ของผู้ใช้ปัจจุบัน
+  const session = await auth();
+
+  // 2. ถ้าไม่มี session หรือไม่มี userId แสดงว่ายังไม่ได้ login
+  if (!session?.user?.id) {
+    return false;
+  }
+
+  const userId = session.user.id;
+
+  // 3. ค้นหาข้อมูล subscription ของผู้ใช้จากฐานข้อมูล
+  const userSubscription = await prisma.subscription.findUnique({
+    where: {
+      userId: userId,
+    },
+    select: {
+      status: true,
+      currentPeriodEnd: true,
+    },
+  });
+
+  // 4. ถ้าไม่มีข้อมูล subscription เลย
+  if (!userSubscription) {
+    return false;
+  }
+
+  // 5. ตรวจสอบว่า subscription ยัง active และยังไม่หมดอายุ
+  // เราเพิ่ม grace period (เผื่อเวลา) 1 วันเข้าไปด้วย
+  const isPremium =
+    userSubscription.status === 'active' &&
+    userSubscription.currentPeriodEnd?.getTime()! + DAY_IN_MS > Date.now();
+
+  return !!isPremium;
+};
