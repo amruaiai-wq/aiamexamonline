@@ -1,0 +1,33 @@
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { SessionProvider } from "next-auth/react";
+import { auth } from "@/lib/auth";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Online Quiz Freemium",
+  description: "ฝึกทำข้อสอบออนไลน์พร้อมเฉลยละเอียดสำหรับสมาชิกพรีเมียม",
+};
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const session = await auth();
+  return (
+    // SessionProvider จำเป็นสำหรับ Client Components ที่ต้องการเข้าถึงข้อมูล session
+    <SessionProvider session={session}>
+      <html lang="th">
+        <body className={inter.className}>
+          {/* อาจจะเพิ่ม Header/Navbar ที่นี่ */}
+          <main className="container mx-auto px-4 py-8">
+            {children}
+          </main>
+        </body>
+      </html>
+    </SessionProvider>
+  );
+}
