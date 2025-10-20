@@ -1,0 +1,51 @@
+import { checkSubscription } from '@/lib/subscription';
+import { redirect } from 'next/navigation';
+import { auth } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import DashboardClient from '@/components/DashboardClient';
+import Link from 'next/link';
+
+// หน้านี้เป็น Server Component ที่มีการป้องกันสิทธิ์
+export default async function DashboardPage() {
+  // 1. ตรวจสอบสถานะ Premium
+  const isPremium = await checkSubscription();
+  const session = await auth();
+
+  // 2. ถ้าไม่ใช่ Premium ให้ redirect ไปหน้า pricing
+  if (!isPremium) {
+    return (
+        <div className="flex flex-col items-center justify-center h-96 bg-gray-50 rounded-lg">
+            <h2 className="text-2xl font-bold mb-4">สำหรับสมาชิก Premium เท่านั้น</h2>
+            <p className="text-gray-600 mb-6">
+                อัพเกรดเพื่อเข้าถึงแดชบอร์ดสถิติ, วิเคราะห์จุดแข็ง-จุดอ่อน, และเฉลยข้อสอบทั้งหมด
+            </p>
+            <Link href="/pricing" className="bg-green-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600">
+                ดูแพ็กเกจ Premium
+            </Link>
+        </div>
+    );
+  }
+
+  // 3. ถ้าเป็น Premium, ดึงข้อมูลสถิติจากฐานข้อมูล
+  const examResults = await prisma.examResult.findMany({
+    where: {
+      userId: session?.user?.id,
+    },
+    orderBy: {
+      completedAt: 'desc',
+    },
+    include: {
+        exam: {
+            select: { title: true }
+        }
+    }
+  });
+
+  // 4. ส่งข้อมูลไปยัง Client Component เพื่อแสดงผล
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-6">แดชบอร์ดสถิติ</h1>
+      <DashboardClient results={examResults} />
+    </div>
+  );
+}
