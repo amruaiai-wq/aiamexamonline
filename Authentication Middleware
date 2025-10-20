@@ -1,0 +1,12 @@
+import { auth } from '@/lib/auth';
+
+// Middleware จะทำงานกับทุก request ที่ตรงกับ matcher ที่กำหนด
+// ในที่นี้ เราใช้ NextAuth.js's middleware เพื่อป้องกันการเข้าถึงหน้าที่ต้องการการยืนยันตัวตน
+
+export default auth;
+
+export const config = {
+  // matcher ระบุว่า middleware นี้จะทำงานบน path ไหนบ้าง
+  // ในที่นี้คือทุกหน้าที่ขึ้นต้นด้วย /dashboard และ /exam
+  matcher: ['/dashboard/:path*', '/exam/:path*', '/result/:path*'],
+};
