@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client'; // ✅ เข้ากับโครงสร้างคุณ
+import { createClient } from '@/lib/supabase/client';
 
 interface ResultData {
   id: string;
@@ -16,9 +16,10 @@ interface ResultData {
 }
 
 export default function ResultPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id as string;
   const router = useRouter();
-  const supabase = createClient(); // ✅ ใช้ instance จาก client.ts
+  const supabase = createClient();
   const [result, setResult] = useState<ResultData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +45,7 @@ export default function ResultPage() {
       if (error) {
         console.error('❌ Error loading result:', error.message);
       } else {
-        setResult(data);
+        setResult(data as ResultData);
       }
       setLoading(false);
     };
