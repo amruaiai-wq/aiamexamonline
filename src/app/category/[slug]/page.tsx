@@ -24,7 +24,8 @@ const SubcategoryIcon = ({ name }: { name: string }) => {
 };
 
 export default async function CategoryDetailPage({ params }: { params: Params }) {
-  const supabase = createSupabaseServerClient();
+  // ✅ เพิ่ม await ตรงนี้
+  const supabase = await createSupabaseServerClient();
 
   // 1) หา category จาก slug
   const { data: category, error: catErr } = await supabase
@@ -36,7 +37,9 @@ export default async function CategoryDetailPage({ params }: { params: Params })
   if (catErr || !category) {
     return (
       <main className="container mx-auto py-16 px-4">
-        <p className="text-center text-red-600">ไม่พบหมวดนี้</p>
+        <p className="text-center text-red-600">
+          ไม่พบหมวดนี้ {catErr ? `(${catErr.message})` : ''}
+        </p>
       </main>
     );
   }

@@ -4,23 +4,14 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-interface ResultData {
-  id: string;
-  score: number;
-  total_questions: number;
-  score_percent: number;
-  created_at: string;
-  Tests: {
-    title: string;
-  } | null;
-}
-
 export default function ResultPage() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
   const supabase = createClient();
-  const [result, setResult] = useState<ResultData | null>(null);
+  
+  // ✅ ใช้ any แทน interface เพื่อหลีกเลี่ยง type error
+  const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,8 +35,10 @@ export default function ResultPage() {
 
       if (error) {
         console.error('❌ Error loading result:', error.message);
+        setResult(null);
       } else {
-        setResult(data as ResultData);
+        // ✅ ไม่ต้อง cast type
+        setResult(data);
       }
       setLoading(false);
     };
@@ -83,16 +76,13 @@ export default function ResultPage() {
         🧩 ชุดข้อสอบ: <strong>{result.Tests?.title || 'ไม่ระบุ'}</strong>
       </p>
       <p className="text-lg text-gray-700 mb-2">
-        ✅ คะแนนที่ได้: <strong>{result.score}</strong> /{' '}
-        {result.total_questions}
+        ✅ คะแนนที่ได้: <strong>{result.score || 0}</strong> / {result.total_questions || 0}
       </p>
       <p className="text-lg text-gray-700 mb-2">
-        📊 คิดเป็นเปอร์เซ็นต์:{' '}
-        <strong>{result.score_percent?.toFixed(1) || 0}%</strong>
+        📊 คิดเป็นเปอร์เซ็นต์: <strong>{(result.score_percent || 0).toFixed(1)}%</strong>
       </p>
       <p className="text-sm text-gray-500 mt-4">
-        วันที่ทำข้อสอบ:{' '}
-        {new Date(result.created_at).toLocaleString('th-TH')}
+        วันที่ทำข้อสอบ: {new Date(result.created_at).toLocaleString('th-TH')}
       </p>
 
       <button

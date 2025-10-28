@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import QuestionRenderer from './question-renderer';
 
 export default function TestPage() {
-  const { testId } = useParams();
+  const params = useParams();
+  const testId = params?.testId as string;
   const router = useRouter();
   const supabase = createClient();
 
@@ -40,13 +41,28 @@ export default function TestPage() {
 
       setTest(testData);
 
+      // ✅ ดึงข้อมูล user ที่ login อยู่
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      
+      let userIdentifier = '';
+      
+      if (userData?.user?.email) {
+        // ถ้า login แล้ว ใช้ email
+        userIdentifier = userData.user.email;
+      } else {
+        // ถ้ายังไม่ login ใช้ anon
+        userIdentifier = 'anon_' + Math.random().toString(36).substring(2, 8);
+      }
+
+      console.log('🔑 User Identifier:', userIdentifier);
+
       // ✅ สร้าง attempt ใหม่
       const { data: attempt, error: attemptError } = await supabase
         .from('TestAttempt')
         .insert([
           {
             test_id: testId,
-            user_identifier: 'anon_' + Math.random().toString(36).substring(2, 8),
+            user_identifier: userIdentifier,
             start_time: new Date().toISOString(),
           },
         ])
@@ -60,6 +76,7 @@ export default function TestPage() {
         return;
       }
 
+      console.log('✅ Created attempt:', attempt.id);
       setAttemptId(attempt.id);
       setLoading(false);
     };
@@ -102,10 +119,9 @@ export default function TestPage() {
       <h1 className="text-3xl font-bold text-center mb-6 text-indigo-700">
         {test.title}
       </h1>
-      <p className="text-center text-gray-600 mb-8">{test.description}</p>
 
       {/* ✅ Component ทำข้อสอบ */}
-      <QuestionRenderer testId={testId as string} attemptId={attemptId} />
+      <QuestionRenderer testId={testId} attemptId={attemptId} />
     </main>
   );
 }

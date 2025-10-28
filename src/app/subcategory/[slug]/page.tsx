@@ -5,7 +5,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 type Params = { slug: string };
 
 export default async function SubcategoryDetailPage({ params }: { params: Params }) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   // 1) หา subcategory จาก slug
   const { data: sub, error: subErr } = await supabase
