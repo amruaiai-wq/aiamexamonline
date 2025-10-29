@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
-// ✅ สร้าง interface ที่ตรงกับข้อมูลจาก Supabase
+// ✅ Interface ที่ตรงกับข้อมูลจริงจาก Supabase
 interface TestItem {
   title: string;
 }
@@ -15,7 +15,7 @@ interface TestAttempt {
   total_questions: number;
   score_percent: number;
   created_at: string;
-  Tests: TestItem[]; // relation ส่งกลับมาเป็น array
+  Tests: TestItem[]; // 🟢 ต้องเป็น array
 }
 
 export default function ResultPage() {
@@ -24,7 +24,6 @@ export default function ResultPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // ✅ กำหนด state พร้อม type ที่ชัดเจน
   const [result, setResult] = useState<TestAttempt | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -53,7 +52,12 @@ export default function ResultPage() {
         setErrorMessage(error.message);
         setResult(null);
       } else {
-        setResult(data as TestAttempt);
+        // 🟢 แปลง type ให้ TypeScript เข้าใจว่า Tests เป็น array
+        const fixedData: TestAttempt = {
+          ...data,
+          Tests: Array.isArray(data.Tests) ? data.Tests : [data.Tests],
+        };
+        setResult(fixedData);
       }
 
       setLoading(false);
@@ -62,7 +66,6 @@ export default function ResultPage() {
     fetchResult();
   }, [id]);
 
-  // 🔄 Loading state
   if (loading)
     return (
       <div className="text-center text-gray-500 py-20">
@@ -70,7 +73,6 @@ export default function ResultPage() {
       </div>
     );
 
-  // ⚠️ Error state
   if (errorMessage)
     return (
       <div className="text-center text-red-500 py-20">
@@ -85,7 +87,6 @@ export default function ResultPage() {
       </div>
     );
 
-  // 🚫 No result found
   if (!result)
     return (
       <div className="text-center text-red-500 py-20">
@@ -100,7 +101,6 @@ export default function ResultPage() {
       </div>
     );
 
-  // ✅ แสดงผลลัพธ์
   return (
     <div className="max-w-xl mx-auto bg-white rounded-xl shadow-lg p-8 mt-10 border-t-4 border-indigo-600">
       <h1 className="text-3xl font-bold text-indigo-700 mb-4">
