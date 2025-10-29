@@ -1,127 +1,118 @@
-'use client';
+// src/app/result/[id]/page.tsx - แก้ไข Type Error
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import QuestionRenderer from './question-renderer';
+// ✅ แก้ไขวิธีที่ 1: เพิ่ม Type Definition ที่ถูกต้อง
+type TestResult = {
+  id: any;
+  score: any;
+  total_questions: any;
+  score_percent: any;
+  created_at: any;
+  Tests: {
+    title: string;
+  } | null; // ← เปลี่ยนจาก array เป็น object เดี่ยว
+};
 
-export default function TestPage() {
-  const params = useParams();
-  const testId = params?.testId as string;
-  const router = useRouter();
-  const supabase = createClient();
+// ในส่วนของ query (ถ้ามี .select())
+const { data, error } = await supabase
+  .from('Results')
+  .select(`
+    id,
+    score,
+    total_questions,
+    score_percent,
+    created_at,
+    Tests!inner (
+      title
+    )
+  `)
+  .eq('id', params.id)
+  .single();
 
-  const [loading, setLoading] = useState(true);
-  const [test, setTest] = useState<any>(null);
-  const [attemptId, setAttemptId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+// ใช้งาน
+if (data) {
+  console.log(data.Tests?.title); // ✅ ถูกต้อง
+}
 
-  // โหลดข้อมูลชุดข้อสอบ + สร้าง attempt ใหม่
-  useEffect(() => {
-    const initTest = async () => {
-      if (!testId || testId === 'undefined') {
-        setError('ไม่พบ Test ID');
-        setLoading(false);
-        return;
-      }
 
-      // ✅ โหลดข้อมูลชุดข้อสอบ
-      const { data: testData, error: testError } = await supabase
-        .from('Tests')
-        .select('id, title')
-        .eq('id', testId)
-        .single();
+// ============================================
+// หรือ แก้ไขวิธีที่ 2: ถ้า Tests เป็น array จริงๆ
+// ============================================
 
-      if (testError || !testData) {
-        console.error('Error loading test:', testError?.message);
-        setError('ไม่พบข้อมูลชุดข้อสอบ');
-        setLoading(false);
-        return;
-      }
+type TestResult = {
+  id: any;
+  score: any;
+  total_questions: any;
+  score_percent: any;
+  created_at: any;
+  Tests: {
+    title: string;
+  }[]; // ← array ของ object
+};
 
-      setTest(testData);
+// ใช้งาน
+if (data && data.Tests && data.Tests.length > 0) {
+  console.log(data.Tests[0].title); // ✅ เข้าถึง element แรก
+}
 
-      // ✅ ดึงข้อมูล user ที่ login อยู่
-      const { data: userData, error: userError } = await supabase.auth.getUser();
-      
-      let userIdentifier = '';
-      
-      if (userData?.user?.email) {
-        // ถ้า login แล้ว ใช้ email
-        userIdentifier = userData.user.email;
-      } else {
-        // ถ้ายังไม่ login ใช้ anon
-        userIdentifier = 'anon_' + Math.random().toString(36).substring(2, 8);
-      }
 
-      console.log('🔑 User Identifier:', userIdentifier);
+// ============================================
+// แนะนำให้ใช้วิธีนี้: Define Type ที่ชัดเจน
+// ============================================
 
-      // ✅ สร้าง attempt ใหม่
-      const { data: attempt, error: attemptError } = await supabase
-        .from('TestAttempt')
-        .insert([
-          {
-            test_id: testId,
-            user_identifier: userIdentifier,
-            start_time: new Date().toISOString(),
-          },
-        ])
-        .select('id')
-        .single();
+interface Test {
+  title: string;
+}
 
-      if (attemptError) {
-        console.error('Error creating attempt:', attemptError.message);
-        setError('ไม่สามารถสร้าง attempt ได้');
-        setLoading(false);
-        return;
-      }
+interface Result {
+  id: string;
+  score: number;
+  total_questions: number;
+  score_percent: number;
+  created_at: string;
+  Tests: Test | null; // ถ้าเป็น relation หนึ่งต่อหนึ่ง
+}
 
-      console.log('✅ Created attempt:', attempt.id);
-      setAttemptId(attempt.id);
-      setLoading(false);
-    };
+// หรือ
+interface Result {
+  id: string;
+  score: number;
+  total_questions: number;
+  score_percent: number;
+  created_at: string;
+  Tests: Test[]; // ถ้าเป็น relation หนึ่งต่อหลาย
+}
 
-    initTest();
-  }, [testId]);
+export default async function ResultPage({ params }: { params: { id: string } }) {
+  const supabase = await createSupabaseServerClient();
+  
+  const { data, error } = await supabase
+    .from('Results')
+    .select(`
+      id,
+      score,
+      total_questions,
+      score_percent,
+      created_at,
+      Tests (
+        title
+      )
+    `)
+    .eq('id', params.id)
+    .single();
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen text-gray-600">
-        ⏳ กำลังโหลดข้อสอบ...
-      </div>
-    );
+  if (error || !data) {
+    console.error('❌ Error loading result:', error?.message);
+    return <div>Error loading result</div>;
   }
 
-  if (error) {
-    return (
-      <div className="flex flex-col justify-center items-center min-h-screen text-center">
-        <p className="text-red-600 text-2xl mb-4">{error}</p>
-        <button
-          onClick={() => router.push('/')}
-          className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition"
-        >
-          กลับหน้าหลัก
-        </button>
-      </div>
-    );
-  }
-
-  if (!attemptId || !test) {
-    return (
-      <div className="text-center py-20 text-gray-500">
-        ⚠️ ไม่สามารถเริ่มทำข้อสอบได้
-      </div>
-    );
-  }
+  // ✅ Cast type ถ้าจำเป็น
+  const result = data as Result;
 
   return (
-    <main className="container mx-auto py-10 px-4">
-      <h1 className="text-3xl font-bold text-center mb-6 text-indigo-700">
-        {test.title}
-      </h1>
-
-      {/* ✅ Component ทำข้อสอบ */}
-      <QuestionRenderer testId={testId} attemptId={attemptId} />
-    </main>
+    <div>
+      <h1>Result</h1>
+      <p>Score: {result.score}</p>
+      <p>Test: {result.Tests?.title || 'N/A'}</p>
+    </div>
   );
 }
