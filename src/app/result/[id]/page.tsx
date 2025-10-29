@@ -4,15 +4,30 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
+// ✅ สร้าง interface ที่ตรงกับข้อมูลจาก Supabase
+interface TestItem {
+  title: string;
+}
+
+interface TestAttempt {
+  id: string;
+  score: number;
+  total_questions: number;
+  score_percent: number;
+  created_at: string;
+  Tests: TestItem[]; // relation ส่งกลับมาเป็น array
+}
+
 export default function ResultPage() {
   const params = useParams();
   const id = params?.id as string;
   const router = useRouter();
   const supabase = createClient();
-  
-  // ✅ ใช้ any แทน interface เพื่อหลีกเลี่ยง type error
-  const [result, setResult] = useState<any>(null);
+
+  // ✅ กำหนด state พร้อม type ที่ชัดเจน
+  const [result, setResult] = useState<TestAttempt | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchResult = async () => {
@@ -35,17 +50,19 @@ export default function ResultPage() {
 
       if (error) {
         console.error('❌ Error loading result:', error.message);
+        setErrorMessage(error.message);
         setResult(null);
       } else {
-        // ✅ ไม่ต้อง cast type
-        setResult(data);
+        setResult(data as TestAttempt);
       }
+
       setLoading(false);
     };
 
     fetchResult();
   }, [id]);
 
+  // 🔄 Loading state
   if (loading)
     return (
       <div className="text-center text-gray-500 py-20">
@@ -53,6 +70,22 @@ export default function ResultPage() {
       </div>
     );
 
+  // ⚠️ Error state
+  if (errorMessage)
+    return (
+      <div className="text-center text-red-500 py-20">
+        <h2 className="text-2xl font-bold mb-4">🚨 โหลดข้อมูลไม่สำเร็จ</h2>
+        <p>{errorMessage}</p>
+        <button
+          onClick={() => router.push('/')}
+          className="mt-6 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+        >
+          ← กลับหน้าหลัก
+        </button>
+      </div>
+    );
+
+  // 🚫 No result found
   if (!result)
     return (
       <div className="text-center text-red-500 py-20">
@@ -67,20 +100,28 @@ export default function ResultPage() {
       </div>
     );
 
+  // ✅ แสดงผลลัพธ์
   return (
     <div className="max-w-xl mx-auto bg-white rounded-xl shadow-lg p-8 mt-10 border-t-4 border-indigo-600">
       <h1 className="text-3xl font-bold text-indigo-700 mb-4">
         ผลลัพธ์การทำข้อสอบ
       </h1>
+
       <p className="text-lg text-gray-700 mb-2">
-        🧩 ชุดข้อสอบ: <strong>{result.Tests?.title || 'ไม่ระบุ'}</strong>
+        🧩 ชุดข้อสอบ:{' '}
+        <strong>{result.Tests?.[0]?.title || 'ไม่ระบุชื่อชุดข้อสอบ'}</strong>
       </p>
+
       <p className="text-lg text-gray-700 mb-2">
-        ✅ คะแนนที่ได้: <strong>{result.score || 0}</strong> / {result.total_questions || 0}
+        ✅ คะแนนที่ได้:{' '}
+        <strong>{result.score}</strong> / {result.total_questions}
       </p>
+
       <p className="text-lg text-gray-700 mb-2">
-        📊 คิดเป็นเปอร์เซ็นต์: <strong>{(result.score_percent || 0).toFixed(1)}%</strong>
+        📊 คิดเป็นเปอร์เซ็นต์:{' '}
+        <strong>{result.score_percent.toFixed(1)}%</strong>
       </p>
+
       <p className="text-sm text-gray-500 mt-4">
         วันที่ทำข้อสอบ: {new Date(result.created_at).toLocaleString('th-TH')}
       </p>
