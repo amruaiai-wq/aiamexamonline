@@ -44,7 +44,7 @@ export default function ResultPage() {
     };
 
     fetchResult();
-  }, [id, supabase]);
+  }, [id]);
 
   if (loading)
     return (
