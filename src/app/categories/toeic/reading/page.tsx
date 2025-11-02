@@ -1,0 +1,204 @@
+// src/app/categories/toeic/reading/page.tsx
+import Link from 'next/link'
+import { createSupabaseServerClient } from '@/lib/supabase/server'
+
+export default async function TOEICReadingPage() {
+  const supabase = await createSupabaseServerClient()
+
+  // ดึงข้อสอบ Reading จาก Database
+  const { data: tests, error } = await supabase
+    .from('Tests')
+    .select('id, title, description, difficulty, created_at')
+    .eq('category', 'toeic')
+    .eq('subcategory', 'reading')
+    .order('created_at', { ascending: false })
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-purple-900">
+      <div className="container mx-auto px-6 py-16">
+        {/* Back Button */}
+        <Link 
+          href="/categories/toeic" 
+          className="inline-flex items-center text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 font-medium mb-8 transition-colors group"
+        >
+          <svg 
+            className="w-5 h-5 mr-2 transform group-hover:-translate-x-1 transition-transform" 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          กลับไป TOEIC
+        </Link>
+
+        {/* Header Section */}
+        <div className="text-center mb-16">
+          <span className="text-7xl mb-6 inline-block">📖</span>
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4">
+            TOEIC Reading
+          </h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto mb-6">
+            ฝึกทักษะการอ่านภาษาอังกฤษ Part 5-7 พร้อมเฉลยละเอียด
+          </p>
+          <div className="h-1 w-32 bg-gradient-to-r from-purple-500 to-pink-500 mx-auto rounded-full"></div>
+        </div>
+
+        {/* Test Parts Info */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12 max-w-5xl mx-auto">
+          {[
+            { part: 'Part 5', name: 'Incomplete Sentences', count: '30 ข้อ' },
+            { part: 'Part 6', name: 'Text Completion', count: '16 ข้อ' },
+            { part: 'Part 7', name: 'Reading Comprehension', count: '54 ข้อ' },
+          ].map((part, index) => (
+            <div 
+              key={part.part}
+              className="bg-white dark:bg-gray-800 rounded-xl p-4 text-center shadow-md transform hover:scale-105 transition-transform"
+            >
+              <div className="font-bold text-purple-600 dark:text-purple-400 mb-1">{part.part}</div>
+              <div className="text-sm text-gray-600 dark:text-gray-300 mb-1">{part.name}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{part.count}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Tests List */}
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+              ชุดข้อสอบทั้งหมด ({tests?.length || 0})
+            </h2>
+            
+            {/* Filter */}
+            <div className="flex gap-2">
+              <button className="px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700 transition">
+                ทั้งหมด
+              </button>
+              <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                ง่าย
+              </button>
+              <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                ปานกลาง
+              </button>
+              <button className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm font-semibold hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                ยาก
+              </button>
+            </div>
+          </div>
+
+          {/* Tests Grid */}
+          {error ? (
+            <div className="text-center py-20 bg-red-50 dark:bg-red-900/20 rounded-3xl">
+              <span className="text-6xl mb-4 inline-block">⚠️</span>
+              <p className="text-red-600 dark:text-red-400 text-lg">
+                เกิดข้อผิดพลาดในการโหลดข้อสอบ
+              </p>
+            </div>
+          ) : tests && tests.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tests.map((test, index) => (
+                <Link
+                  key={test.id}
+                  href={`/test/${test.id}`}
+                  className="group"
+                >
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-purple-400 dark:hover:border-purple-600 transform hover:-translate-y-2">
+                    {/* Test Number Badge */}
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-300 rounded-full text-sm font-bold">
+                        ชุดที่ {index + 1}
+                      </span>
+                      
+                      {/* Difficulty Badge */}
+                      {test.difficulty && (
+                        <DifficultyBadge level={test.difficulty as 'easy' | 'medium' | 'hard'} />
+                      )}
+                    </div>
+
+                    {/* Title */}
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                      {test.title || `TOEIC Reading Test ${index + 1}`}
+                    </h3>
+
+                    {/* Description */}
+                    {test.description && (
+                      <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-2">
+                        {test.description}
+                      </p>
+                    )}
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        100 คำถาม
+                      </span>
+                      <div className="flex items-center text-purple-600 dark:text-purple-400 font-semibold text-sm">
+                        เริ่มทำข้อสอบ
+                        <svg 
+                          className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-gray-50 dark:bg-gray-800/50 rounded-3xl">
+              <span className="text-6xl mb-4 inline-block">📭</span>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                ยังไม่มีข้อสอบในส่วนนี้
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300">
+                กำลังเพิ่มข้อสอบเร็ว ๆ นี้
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Tips Section */}
+        <div className="mt-16 bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl p-8 text-white text-center shadow-xl max-w-5xl mx-auto">
+          <h3 className="text-2xl font-bold mb-3">📚 Tips สำหรับการฝึก Reading</h3>
+          <p className="text-purple-100 text-lg max-w-2xl mx-auto">
+            อ่านคำถามก่อนอ่านบทความ จะช่วยให้จับประเด็นได้เร็วขึ้น
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Difficulty Badge Component
+function DifficultyBadge({ level }: { level: 'easy' | 'medium' | 'hard' }) {
+  const configs = {
+    easy: {
+      label: 'ง่าย',
+      icon: '🟢',
+      className: 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300'
+    },
+    medium: {
+      label: 'ปานกลาง',
+      icon: '🟡',
+      className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300'
+    },
+    hard: {
+      label: 'ยาก',
+      icon: '🔴',
+      className: 'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'
+    }
+  }
+
+  const config = configs[level] || configs.medium
+
+  return (
+    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${config.className}`}>
+      <span className="mr-1">{config.icon}</span>
+      {config.label}
+    </span>
+  )
+}
