@@ -155,13 +155,13 @@ export default function CustomsCategoryPage() {
               </h4>
               <ul className="space-y-2 text-gray-600 dark:text-gray-300">
                 <li className="flex items-center">
-                  <span className="mr-2">📚</span> ความรู้ทั่วไป (40 ข้อ)
+                  <span className="mr-2">📚</span> เหตุการณ์ปัจจุบัน
                 </li>
                 <li className="flex items-center">
-                  <span className="mr-2">🇬🇧</span> ภาษาอังกฤษ (30 ข้อ)
+                  <span className="mr-2">🇬🇧</span> ภาษาอังกฤษ 
                 </li>
                 <li className="flex items-center">
-                  <span className="mr-2">💻</span> คอมพิวเตอร์ (30 ข้อ)
+                  <span className="mr-2">💻</span> การคิดเชิงวิเคราะห์(Analytical Thinking)
                 </li>
               </ul>
             </div>
@@ -173,13 +173,13 @@ export default function CustomsCategoryPage() {
               </h4>
               <ul className="space-y-2 text-gray-600 dark:text-gray-300">
                 <li className="flex items-center">
-                  <span className="mr-2">⚖️</span> กฎหมายศุลกากร (50 ข้อ)
+                  <span className="mr-2">⚖️</span> กฎหมายศุลกากร พรบ. พรก. กฎกระทรวง ฯลฯ
                 </li>
                 <li className="flex items-center">
-                  <span className="mr-2">📈</span> เศรษฐศาสตร์ (30 ข้อ)
+                  <span className="mr-2">📈</span> ความรู้ทั่วไปเกี่ยวกับกรมศุลกากร
                 </li>
                 <li className="flex items-center">
-                  <span className="mr-2">🌍</span> การค้าระหว่างประเทศ (20 ข้อ)
+                  <span className="mr-2">🌍</span> ความรู้เกี่ยวกับวินัย จรรยาบรรณของราชการ 
                 </li>
               </ul>
             </div>

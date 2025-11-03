@@ -16,7 +16,7 @@ export default async function CustomsLawPage() {
     <SubjectPage
       title="กฎหมายศุลกากร"
       icon="⚖️"
-      description="พระราชบัญญัติศุลกากร และกฎหมายที่เกี่ยวข้อง"
+      description="พระราชบัญญัติศุลกากรและกฎหมายที่เกี่ยวข้อง"
       backLink="/categories/customs"
       backText="กลับไป นักวิชาการศุลกากร"
       color="purple"
