@@ -1,72 +1,47 @@
-import { z } from 'zod'
+// src/lib/validation.ts
+import { z } from 'zod';
 
-// ====== Login Validation ======
-export const loginSchema = z.object({
-  email: z
-    .string()
-    .min(1, 'กรุณากรอกอีเมล')
-    .email('รูปแบบอีเมลไม่ถูกต้อง'),
-  password: z
-    .string()
-    .min(6, 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'),
-})
+// Schema for question validation
+const questionSchema = z.object({
+  question_text: z.string().min(1, 'คำถามต้องไม่ว่าง'),
+  question_type: z.enum(['multiple_choice', 'true_false', 'fill_blank']),
+  choices: z.array(z.string()).nullable().optional(),
+  correct_answer: z.string().min(1, 'คำตอบต้องไม่ว่าง'),
+  explanation: z.string().nullable().optional(),
+  order_num: z.number().int().positive().optional(),
+});
 
-export type LoginInput = z.infer<typeof loginSchema>
+// Schema for test upload validation
+const testUploadSchema = z.object({
+  title: z.string().min(1, 'ชื่อข้อสอบต้องไม่ว่าง'),
+  description: z.string().optional(),
+  category: z.enum(['toeic', 'pak-kor', 'a-level', 'customs']),
+  subcategory: z.string().optional(),
+  difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
+  time_limit_minutes: z.number().int().positive().optional(),
+  questions: z.array(questionSchema).min(1, 'ต้องมีอย่างน้อย 1 คำถาม'),
+});
 
-// ====== Register Validation ======
-export const registerSchema = z
-  .object({
-    email: z
-      .string()
-      .min(1, 'กรุณากรอกอีเมล')
-      .email('รูปแบบอีเมลไม่ถูกต้อง'),
-    password: z
-      .string()
-      .min(8, 'รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร')
-      .regex(/[A-Z]/, 'ต้องมีตัวพิมพ์ใหญ่อย่างน้อย 1 ตัว')
-      .regex(/[a-z]/, 'ต้องมีตัวพิมพ์เล็กอย่างน้อย 1 ตัว')
-      .regex(/[0-9]/, 'ต้องมีตัวเลขอย่างน้อย 1 ตัว'),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: 'รหัสผ่านไม่ตรงกัน',
-    path: ['confirmPassword'],
-  })
-
-export type RegisterInput = z.infer<typeof registerSchema>
-
-// ====== Test Submission Validation ======
-export const testSubmissionSchema = z.object({
-  testId: z.string().uuid('Invalid test ID'),
-  answers: z.array(
-    z.object({
-      questionId: z.string().uuid('Invalid question ID'),
-      selectedAnswer: z.string().min(1, 'Please select an answer'),
-    })
-  ),
-  timeSpent: z.number().positive('Time spent must be positive'),
-})
-
-export type TestSubmissionInput = z.infer<typeof testSubmissionSchema>
-
-// ====== Helper function to validate ======
-export function validateData<T>(schema: z.ZodSchema<T>, data: unknown) {
+export function validateTestData(data: unknown) {
   try {
-    const validated = schema.parse(data)
-    return { success: true as const, data: validated }
+    const result = testUploadSchema.parse(data);
+    return {
+      success: true as const,
+      data: result,
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       return {
         success: false as const,
-        errors: error.errors.map((e) => ({
+        errors: error.issues.map((e) => ({
           field: e.path.join('.'),
           message: e.message,
         })),
-      }
+      };
     }
-    return {
-      success: false as const,
-      errors: [{ field: 'unknown', message: 'Validation failed' }],
-    }
+    throw error;
   }
 }
+
+export type TestUploadData = z.infer<typeof testUploadSchema>;
+export type QuestionData = z.infer<typeof questionSchema>;

@@ -6,7 +6,21 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import Link from 'next/link'
 
-export default function TestActions({ test }: any) {
+interface Test {
+  id: number
+  title: string | null
+  description: string | null
+  category: string
+  subcategory: string | null
+  total_questions: number | null
+  created_at: string
+}
+
+interface TestActionsProps {
+  test: Test
+}
+
+export default function TestActions({ test }: TestActionsProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const supabase = createSupabaseClient()

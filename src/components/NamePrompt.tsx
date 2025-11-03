@@ -1,4 +1,4 @@
-// src/app/components/NamePrompt.tsx
+// src/components/NamePrompt.tsx
 'use client'; 
 
 import { useState, useEffect } from 'react';
@@ -18,8 +18,6 @@ export default function NamePrompt() {
 
     useEffect(() => {
         const storedName = getLocalUsername();
-        
-        // <<< บรรทัดนี้สำหรับ Debugging ใน Console >>>
         console.log('Stored Username:', storedName); 
         
         if (!storedName) {
@@ -37,19 +35,21 @@ export default function NamePrompt() {
 
     if (!isPromptVisible) return null; 
 
-    // UI ของ Pop-up
     return (
-        // <<< เพิ่ม z-[9999] เพื่อป้องกันถูกบัง >>>
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"> 
-            <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full text-center">
-                <h2 className="text-2xl font-bold mb-4 text-indigo-600">ยินดีต้อนรับสู่ AiAm!</h2>
-                <p className="mb-6 text-gray-700">กรุณาระบุชื่อเล่นเพื่อติดตามความคืบหน้า</p>
+            <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl max-w-sm w-full text-center">
+                <h2 className="text-2xl font-bold mb-4 text-indigo-600 dark:text-indigo-400">
+                    ยินดีต้อนรับสู่ Ekorsob.com!
+                </h2>
+                <p className="mb-6 text-gray-700 dark:text-gray-300">
+                    กรุณาระบุชื่อเล่นเพื่อติดตามความคืบหน้า
+                </p>
                 <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="เช่น สมชาย หรือ สมหญิง"
-                    className="w-full p-3 border border-gray-300 rounded-lg mb-4 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg mb-4 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-indigo-500 focus:border-indigo-500"
                 />
                 <button
                     onClick={handleSave}

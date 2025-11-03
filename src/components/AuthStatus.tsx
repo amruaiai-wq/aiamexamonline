@@ -1,8 +1,9 @@
+// src/components/AuthStatus.tsx
 'use client';
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createSupabaseClient } from '@/lib/supabase/client';
 
 export default function AuthStatus() {
   const router = useRouter();
@@ -10,7 +11,7 @@ export default function AuthStatus() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
+    const supabase = createSupabaseClient();
 
     // ✅ ดึง user ปัจจุบันตอนโหลดหน้า
     supabase.auth.getUser().then(({ data, error }) => {
@@ -31,7 +32,7 @@ export default function AuthStatus() {
   }, []);
 
   const handleLogout = async () => {
-    const supabase = createClient();
+    const supabase = createSupabaseClient();
     await supabase.auth.signOut();
     setUser(null);
     router.push('/');
@@ -51,7 +52,7 @@ export default function AuthStatus() {
       <div className="flex items-center gap-3">
         <button
           onClick={() => router.push('/login')}
-          className="px-5 py-2.5 text-sm font-semibold text-indigo-600 bg-white border-2 border-indigo-200 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 transition-all duration-200"
+          className="px-5 py-2.5 text-sm font-semibold text-indigo-600 dark:text-indigo-400 bg-white dark:bg-gray-800 border-2 border-indigo-200 dark:border-indigo-700 rounded-xl hover:border-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-all duration-200"
         >
           เข้าสู่ระบบ
         </button>
@@ -70,9 +71,9 @@ export default function AuthStatus() {
   return (
     <div className="flex items-center gap-3">
       {/* User Name */}
-      <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white rounded-xl border-2 border-indigo-100">
+      <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-xl border-2 border-indigo-100 dark:border-indigo-800">
         <span className="text-2xl">👤</span>
-        <span className="text-sm font-semibold text-gray-700">
+        <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
           {displayName}
         </span>
       </div>
