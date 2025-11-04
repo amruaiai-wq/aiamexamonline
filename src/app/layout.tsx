@@ -78,8 +78,10 @@ export default function RootLayout({
           <Navbar />
           {children}
         </ThemeProvider>
+        
+        {/* ✅ ย้าย GoogleAnalytics เข้ามาใน body */}
+        <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ''} />
       </body>
-      <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID || ''} />
     </html>
   );
 }

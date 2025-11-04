@@ -1,25 +1,24 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ✅ ปรับโครงสร้างให้ Tailwind จัดการ dark mode แทน CSS variable */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ✅ กำหนด theme พื้นฐาน */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  @apply bg-white text-gray-900 transition-colors duration-300;
+}
+
+.dark body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* ✅ เผื่อกรณีมี gradient background หรือ section */
+section {
+  @apply transition-colors duration-300;
+}
+
+.dark section {
+  @apply bg-gradient-to-br from-gray-900 via-gray-800 to-indigo-950;
 }

@@ -1,11 +1,18 @@
-// src/lib/theme-provider.tsx
 'use client'
 
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
-import type { ComponentProps } from 'react'
-
-type ThemeProviderProps = ComponentProps<typeof NextThemesProvider>
+import type { ThemeProviderProps } from 'next-themes'
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  return <NextThemesProvider {...props}>{children}</NextThemesProvider>
+  return (
+    <NextThemesProvider
+      attribute="class"         // ✅ เพิ่มบรรทัดนี้
+      defaultTheme="system"     // ✅ สอดคล้องกับ layout.tsx
+      enableSystem={true}       // ✅ รองรับ system dark mode
+      disableTransitionOnChange // ✅ ป้องกันจอแวบตอนเปลี่ยนธีม
+      {...props}
+    >
+      {children}
+    </NextThemesProvider>
+  )
 }

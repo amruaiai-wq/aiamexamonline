@@ -1,3 +1,4 @@
+// src/components/ThemeToggle.tsx
 'use client'
 
 import { useTheme } from 'next-themes'
@@ -7,27 +8,26 @@ export default function ThemeToggle() {
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
 
-  // ป้องกัน hydration mismatch
   useEffect(() => {
     setMounted(true)
   }, [])
 
   if (!mounted) {
     return (
-      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 animate-pulse"></div>
+      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 animate-pulse"></div>
     )
   }
 
   return (
     <button
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-      className="relative w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex items-center justify-center group"
+      className="relative w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group transform hover:scale-110"
       aria-label="Toggle theme"
-      title={theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมื่ด'}
+      title={theme === 'dark' ? 'เปลี่ยนเป็นโหมดสว่าง' : 'เปลี่ยนเป็นโหมดมืด'}
     >
       {/* Sun Icon - แสดงตอน dark mode */}
       <svg
-        className={`absolute w-5 h-5 transition-all duration-300 ${
+        className={`absolute w-6 h-6 text-white transition-all duration-300 ${
           theme === 'dark'
             ? 'rotate-0 scale-100 opacity-100'
             : 'rotate-90 scale-0 opacity-0'
@@ -46,7 +46,7 @@ export default function ThemeToggle() {
 
       {/* Moon Icon - แสดงตอน light mode */}
       <svg
-        className={`absolute w-5 h-5 transition-all duration-300 ${
+        className={`absolute w-6 h-6 text-white transition-all duration-300 ${
           theme === 'light'
             ? 'rotate-0 scale-100 opacity-100'
             : '-rotate-90 scale-0 opacity-0'
@@ -62,6 +62,9 @@ export default function ThemeToggle() {
           d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
         />
       </svg>
+
+      {/* Glow effect */}
+      <div className="absolute inset-0 rounded-xl bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
     </button>
   )
 }
