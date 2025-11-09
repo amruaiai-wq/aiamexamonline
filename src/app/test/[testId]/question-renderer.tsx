@@ -31,61 +31,79 @@ export default function QuestionRenderer({
   // โหลดคำถามและสร้าง attempt
   useEffect(() => {
     const init = async () => {
-      // 1. โหลดคำถาม
-      const { data: questionsData, error: questionsError } = await supabase
-        .from('Question')
-        .select('*')
-        .eq('test_id', testId)
-        .order('order_num', { ascending: true });
+      try {
+        // 1. โหลดคำถาม
+        const { data: questionsData, error: questionsError } = await supabase
+          .from('Question')
+          .select('*')
+          .eq('test_id', testId)
+          .order('order_num', { ascending: true });
 
-      if (questionsError) {
-        console.error('Load questions error:', questionsError);
-        setLoading(false);
-        return;
-      }
+        if (questionsError) {
+          console.error('❌ Load questions error:', questionsError);
+          setLoading(false);
+          return;
+        }
 
-      if (!questionsData || questionsData.length === 0) {
-        console.error('No questions found');
-        setLoading(false);
-        return;
-      }
+        if (!questionsData || questionsData.length === 0) {
+          console.error('❌ No questions found');
+          setLoading(false);
+          return;
+        }
 
-      setQuestions(questionsData);
-      setAnswers(new Array(questionsData.length).fill(null));
+        console.log('✅ Loaded questions:', questionsData.length);
+        setQuestions(questionsData);
+        setAnswers(new Array(questionsData.length).fill(null));
 
-      // 2. สร้าง TestAttempt
-      const { data: attemptData, error: attemptError } = await supabase
-        .from('TestAttempt')
-        .insert({
-          test_id: testId,
-          total_questions: questionsData.length,
-          start_time: new Date().toISOString(),
-          is_completed: false
-        })
-        .select()
-        .single();
+        // 2. สร้าง TestAttempt
+        const { data: attemptData, error: attemptError } = await supabase
+          .from('TestAttempt')
+          .insert({
+            test_id: testId,
+            total_questions: questionsData.length,
+            start_time: new Date().toISOString(),
+            is_completed: false
+          })
+          .select('*')
+          .single();
 
-      if (attemptError) {
-        console.error('Create attempt error:', attemptError);
-      } else {
-        console.log('✅ Attempt created:', attemptData.id);
+        if (attemptError) {
+          console.error('❌ Create attempt error:', attemptError);
+          alert('เกิดข้อผิดพลาดในการสร้างการทำข้อสอบ: ' + attemptError.message);
+          setLoading(false);
+          return;
+        }
+
+        if (!attemptData || !attemptData.id) {
+          console.error('❌ No attempt ID returned:', attemptData);
+          alert('ไม่สามารถสร้าง ID การทำข้อสอบได้');
+          setLoading(false);
+          return;
+        }
+
+        console.log('✅ Attempt created with ID:', attemptData.id);
         setAttemptId(attemptData.id);
+        setLoading(false);
+      } catch (error) {
+        console.error('❌ Init error:', error);
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     init();
   }, [testId]);
 
   const handleAnswer = async (choiceIndex: number) => {
-    if (selectedAnswer !== null || !attemptId) return;
+    if (selectedAnswer !== null || !attemptId) {
+      console.log('⚠️ Cannot answer:', { selectedAnswer, attemptId });
+      return;
+    }
 
     const q = questions[current];
     const correctAnswerIndex = parseInt(q.correct_answer) - 1;
     const isCorrect = choiceIndex === correctAnswerIndex;
 
-    console.log('Answering:', {
+    console.log('📝 Answering:', {
       questionId: q.id,
       attemptId,
       choiceIndex,
@@ -102,9 +120,12 @@ export default function QuestionRenderer({
     });
 
     if (error) {
-      console.error('Insert answer error:', error);
+      console.error('❌ Insert answer error:', error);
+      alert('เกิดข้อผิดพลาดในการบันทึกคำตอบ: ' + error.message);
+      return;
     }
 
+    console.log('✅ Answer saved');
     const newAnswers = [...answers];
     newAnswers[current] = choiceIndex;
     setAnswers(newAnswers);
@@ -113,24 +134,43 @@ export default function QuestionRenderer({
   };
 
   const handleNext = async () => {
-    if (current + 1 < questions.length) {
+    console.log('🔵 handleNext called:', {
+      current,
+      totalQuestions: questions.length,
+      isLastQuestion: current >= questions.length - 1,
+      attemptId
+    });
+
+    // ถ้ายังไม่ใช่ข้อสุดท้าย → ไปข้อถัดไป
+    if (current < questions.length - 1) {
+      console.log('➡️ Going to next question');
       setCurrent(current + 1);
       setShowExplanation(false);
       setSelectedAnswer(null);
-    } else {
-      // ข้อสุดท้าย - คำนวณคะแนน
+    } 
+    // ถ้าเป็นข้อสุดท้ายแล้ว → คำนวณคะแนนและ redirect
+    else {
+      console.log('🏁 Last question - finishing test');
+      
       if (!attemptId) {
-        console.error('No attemptId!');
+        console.error('❌ No attemptId!');
+        alert('เกิดข้อผิดพลาด: ไม่พบ Attempt ID');
         return;
       }
 
-      const correctCount = answers.filter((a, i) => {
+      // รวมข้อสุดท้ายที่เพิ่งตอบด้วย
+      const allAnswers = [...answers];
+      if (selectedAnswer !== null) {
+        allAnswers[current] = selectedAnswer;
+      }
+
+      const correctCount = allAnswers.filter((a, i) => {
         if (a === null) return false;
         const correctIndex = parseInt(questions[i].correct_answer) - 1;
         return a === correctIndex;
       }).length;
 
-      const scorePercent = (correctCount / questions.length) * 100;
+      const scorePercent = Math.round((correctCount / questions.length) * 100);
 
       console.log('📊 Final score:', {
         attemptId,
@@ -139,7 +179,9 @@ export default function QuestionRenderer({
         scorePercent
       });
 
-      const { error } = await supabase
+      // อัพเดทคะแนนและเวลาสิ้นสุด
+      console.log('💾 Updating score...');
+      const { error: updateError } = await supabase
         .from('TestAttempt')
         .update({
           score: correctCount,
@@ -150,12 +192,17 @@ export default function QuestionRenderer({
         })
         .eq('id', attemptId);
 
-      if (error) {
-        console.error('Update score error:', error);
-      } else {
-        console.log('✅ Redirecting to:', `/result/${attemptId}`);
-        router.push(`/result/${attemptId}`);
+      if (updateError) {
+        console.error('❌ Update score error:', updateError);
+        alert('เกิดข้อผิดพลาดในการบันทึกคะแนน: ' + updateError.message);
+        return;
       }
+
+      console.log('✅ Score updated successfully');
+      console.log('🔄 Redirecting to: /result/' + attemptId);
+      
+      // ใช้ router.push แทน window.location.href
+      router.push(`/result/${attemptId}`);
     }
   };
 
@@ -177,6 +224,18 @@ export default function QuestionRenderer({
           <div className="text-6xl mb-4">❌</div>
           <h2 className="text-2xl font-bold mb-2">ไม่มีคำถาม</h2>
           <p className="text-gray-600">ไม่พบคำถามในชุดข้อสอบนี้</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!attemptId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold mb-2">เกิดข้อผิดพลาด</h2>
+          <p className="text-gray-600">ไม่สามารถสร้างการทำข้อสอบได้</p>
         </div>
       </div>
     );
@@ -316,7 +375,7 @@ export default function QuestionRenderer({
               onClick={handleNext}
               className="mt-6 w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all transform hover:scale-105 shadow-lg"
             >
-              {current + 1 === questions.length ? '🎯 ดูผลคะแนน' : 'ข้อถัดไป →'}
+              {current >= questions.length - 1 ? '🎯 ดูผลคะแนน' : 'ข้อถัดไป →'}
             </button>
           </div>
         )}

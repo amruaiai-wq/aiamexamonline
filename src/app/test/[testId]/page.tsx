@@ -12,10 +12,9 @@ export default function TestPage() {
 
   const [loading, setLoading] = useState(true);
   const [test, setTest] = useState<any>(null);
-  const [attemptId, setAttemptId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // โหลดข้อมูลชุดข้อสอบ + สร้าง attempt ใหม่
+  // ✅ โหลดข้อมูลชุดข้อสอบเท่านั้น (ไม่สร้าง attempt ที่นี่)
   useEffect(() => {
     const initTest = async () => {
       if (!testId || testId === 'undefined') {
@@ -24,10 +23,10 @@ export default function TestPage() {
         return;
       }
 
-      // ✅ โหลดข้อมูลชุดข้อสอบ
+      // โหลดข้อมูลชุดข้อสอบ
       const { data: testData, error: testError } = await supabase
         .from('Tests')
-        .select('id, title')
+        .select('id, title, description')
         .eq('id', testId)
         .single();
 
@@ -39,28 +38,6 @@ export default function TestPage() {
       }
 
       setTest(testData);
-
-      // ✅ สร้าง attempt ใหม่
-      const { data: attempt, error: attemptError } = await supabase
-        .from('TestAttempt')
-        .insert([
-          {
-            test_id: testId,
-            user_identifier: 'anon_' + Math.random().toString(36).substring(2, 8),
-            start_time: new Date().toISOString(),
-          },
-        ])
-        .select('id')
-        .single();
-
-      if (attemptError) {
-        console.error('Error creating attempt:', attemptError.message);
-        setError('ไม่สามารถสร้าง attempt ได้');
-        setLoading(false);
-        return;
-      }
-
-      setAttemptId(attempt.id);
       setLoading(false);
     };
 
@@ -89,7 +66,7 @@ export default function TestPage() {
     );
   }
 
-  if (!attemptId || !test) {
+  if (!test) {
     return (
       <div className="text-center py-20 text-gray-500">
         ⚠️ ไม่สามารถเริ่มทำข้อสอบได้
@@ -102,10 +79,12 @@ export default function TestPage() {
       <h1 className="text-3xl font-bold text-center mb-6 text-indigo-700">
         {test.title}
       </h1>
-      <p className="text-center text-gray-600 mb-8">{test.description}</p>
+      {test.description && (
+        <p className="text-center text-gray-600 mb-8">{test.description}</p>
+      )}
 
-      {/* ✅ Component ทำข้อสอบ */}
-      <QuestionRenderer testId={testId as string} attemptId={attemptId} />
+      {/* ✅ Component ทำข้อสอบ - ไม่ส่ง attemptId เพราะให้ QuestionRenderer สร้างเอง */}
+      <QuestionRenderer testId={testId as string} />
     </main>
   );
 }
