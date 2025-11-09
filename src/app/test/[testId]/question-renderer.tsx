@@ -8,65 +8,107 @@ interface Question {
   id: string;
   question_text: string;
   choices: string[];
-  correct_answer: number;
+  correct_answer: string;
   explanation?: string;
 }
 
 export default function QuestionRenderer({
   testId,
-  attemptId,
 }: {
   testId: string;
-  attemptId: string;
 }) {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [loading, setLoading] = useState(true);
   const [showExplanation, setShowExplanation] = useState(false);
-  const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [attemptId, setAttemptId] = useState<string | null>(null);
   const router = useRouter();
 
-  // ✅ ใช้ client ที่เข้ากับไฟล์ของคุณ
   const supabase = createClient();
 
-  // โหลดคำถาม
+  // โหลดคำถามและสร้าง attempt
   useEffect(() => {
-    const loadQuestions = async () => {
-      const { data, error } = await supabase
+    const init = async () => {
+      // 1. โหลดคำถาม
+      const { data: questionsData, error: questionsError } = await supabase
         .from('Question')
         .select('*')
-        .eq('test_id', testId);
+        .eq('test_id', testId)
+        .order('order_num', { ascending: true });
 
-      if (error) console.error('Load questions error:', error.message);
-      setQuestions(data || []);
-      setAnswers(new Array(data?.length || 0).fill(-1));
+      if (questionsError) {
+        console.error('Load questions error:', questionsError);
+        setLoading(false);
+        return;
+      }
+
+      if (!questionsData || questionsData.length === 0) {
+        console.error('No questions found');
+        setLoading(false);
+        return;
+      }
+
+      setQuestions(questionsData);
+      setAnswers(new Array(questionsData.length).fill(null));
+
+      // 2. สร้าง TestAttempt
+      const { data: attemptData, error: attemptError } = await supabase
+        .from('TestAttempt')
+        .insert({
+          test_id: testId,
+          total_questions: questionsData.length,
+          start_time: new Date().toISOString(),
+          is_completed: false
+        })
+        .select()
+        .single();
+
+      if (attemptError) {
+        console.error('Create attempt error:', attemptError);
+      } else {
+        console.log('✅ Attempt created:', attemptData.id);
+        setAttemptId(attemptData.id);
+      }
+
       setLoading(false);
     };
 
-    loadQuestions();
+    init();
   }, [testId]);
 
   const handleAnswer = async (choiceIndex: number) => {
+    if (selectedAnswer !== null || !attemptId) return;
+
     const q = questions[current];
-    const correct = q.correct_answer === choiceIndex;
+    const correctAnswerIndex = parseInt(q.correct_answer) - 1;
+    const isCorrect = choiceIndex === correctAnswerIndex;
 
-    // ✅ บันทึกคำตอบ
-    const { error } = await supabase.from('UserAnswer').insert([
-      {
-        attempt_id: attemptId,
-        question_id: q.id,
-        submitted_choice: choiceIndex,
-        is_correct: correct,
-      },
-    ]);
+    console.log('Answering:', {
+      questionId: q.id,
+      attemptId,
+      choiceIndex,
+      correctAnswerIndex,
+      isCorrect
+    });
 
-    if (error) console.error('Insert answer error:', error.message);
+    // บันทึกคำตอบ
+    const { error } = await supabase.from('UserAnswer').insert({
+      attempt_id: attemptId,
+      question_id: q.id,
+      submitted_choice: choiceIndex,
+      is_correct: isCorrect,
+    });
+
+    if (error) {
+      console.error('Insert answer error:', error);
+    }
 
     const newAnswers = [...answers];
     newAnswers[current] = choiceIndex;
     setAnswers(newAnswers);
-    setIsCorrect(correct);
+    setSelectedAnswer(choiceIndex);
     setShowExplanation(true);
   };
 
@@ -74,89 +116,217 @@ export default function QuestionRenderer({
     if (current + 1 < questions.length) {
       setCurrent(current + 1);
       setShowExplanation(false);
-      setIsCorrect(null);
+      setSelectedAnswer(null);
     } else {
-      // ✅ คำนวณคะแนนเมื่อทำครบ
-      const score = answers.filter((a, i) => questions[i].correct_answer === a).length;
+      // ข้อสุดท้าย - คำนวณคะแนน
+      if (!attemptId) {
+        console.error('No attemptId!');
+        return;
+      }
+
+      const correctCount = answers.filter((a, i) => {
+        if (a === null) return false;
+        const correctIndex = parseInt(questions[i].correct_answer) - 1;
+        return a === correctIndex;
+      }).length;
+
+      const scorePercent = (correctCount / questions.length) * 100;
+
+      console.log('📊 Final score:', {
+        attemptId,
+        correctCount,
+        total: questions.length,
+        scorePercent
+      });
 
       const { error } = await supabase
         .from('TestAttempt')
         .update({
-          score: score,
-          total_questions: questions.length,
-          score_percent: (score / questions.length) * 100,
+          score: correctCount,
+          score_percent: scorePercent,
+          correct_answers: correctCount,
+          is_completed: true,
           end_time: new Date().toISOString(),
         })
         .eq('id', attemptId);
 
-      if (error) console.error('Update score error:', error.message);
-
-      router.push(`/result/${attemptId}`);
+      if (error) {
+        console.error('Update score error:', error);
+      } else {
+        console.log('✅ Redirecting to:', `/result/${attemptId}`);
+        router.push(`/result/${attemptId}`);
+      }
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <div className="text-center text-gray-500 py-10">
-        ⏳ กำลังโหลดคำถาม...
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 text-lg">⏳ กำลังโหลดคำถาม...</p>
+        </div>
       </div>
     );
+  }
 
-  if (questions.length === 0)
+  if (questions.length === 0) {
     return (
-      <div className="text-center text-red-500 py-10">
-        ❌ ไม่มีคำถามในชุดนี้
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">❌</div>
+          <h2 className="text-2xl font-bold mb-2">ไม่มีคำถาม</h2>
+          <p className="text-gray-600">ไม่พบคำถามในชุดข้อสอบนี้</p>
+        </div>
       </div>
     );
+  }
 
   const q = questions[current];
+  const correctAnswerIndex = parseInt(q.correct_answer) - 1;
+  const isCorrect = selectedAnswer === correctAnswerIndex;
+  const progress = ((current + 1) / questions.length) * 100;
 
   return (
-    <div className="bg-white rounded-xl shadow-lg p-8 border-t-4 border-indigo-600 max-w-2xl mx-auto">
-      <h2 className="text-xl font-bold mb-4 text-gray-800">
-        ข้อ {current + 1}/{questions.length}
-      </h2>
-      <p className="text-lg mb-6">{q.question_text}</p>
-
-      <div className="space-y-3">
-        {q.choices.map((choice, i) => (
-          <button
-            key={i}
-            onClick={() => handleAnswer(i)}
-            disabled={answers[current] !== -1}
-            className={`w-full text-left px-4 py-3 rounded-lg border transition ${
-              answers[current] === i
-                ? 'bg-indigo-600 text-white border-indigo-600'
-                : 'bg-gray-50 hover:bg-gray-100 border-gray-200'
-            }`}
-          >
-            {choice}
-          </button>
-        ))}
-      </div>
-
-      {/* ✅ แสดงเฉลยทันที */}
-      {showExplanation && (
-        <div
-          className={`mt-6 p-4 rounded-lg ${
-            isCorrect ? 'bg-green-50 border border-green-400' : 'bg-red-50 border border-red-400'
-          }`}
-        >
-          <p className={`font-semibold ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-            {isCorrect ? '✅ ตอบถูก!' : '❌ ตอบผิด'}
-          </p>
-          <p className="text-gray-700 mt-2 leading-relaxed">
-            💬 {q.explanation || 'ไม่มีคำอธิบายเพิ่มเติม'}
-          </p>
-
-          <button
-            onClick={handleNext}
-            className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition"
-          >
-            {current + 1 === questions.length ? 'ดูผลคะแนน' : 'ข้อถัดไป →'}
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 py-8 px-4">
+      <div className="max-w-3xl mx-auto">
+        
+        {/* Progress Bar */}
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+              ข้อที่ {current + 1} / {questions.length}
+            </span>
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {Math.round(progress)}% เสร็จสิ้น
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2.5 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
         </div>
-      )}
+
+        {/* Question Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border-t-4 border-indigo-600 mb-6">
+          
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 leading-relaxed">
+              {q.question_text}
+            </h2>
+          </div>
+
+          {/* Choices */}
+          <div className="space-y-3">
+            {q.choices.map((choice, i) => {
+              const isSelected = selectedAnswer === i;
+              const isCorrectChoice = i === correctAnswerIndex;
+              const showResult = showExplanation;
+
+              let buttonClass = 'w-full text-left px-6 py-4 rounded-xl border-2 transition-all duration-200 ';
+              
+              if (!showResult) {
+                buttonClass += 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:bg-indigo-50 dark:hover:bg-gray-600 hover:border-indigo-300 dark:hover:border-indigo-500 cursor-pointer';
+              } else {
+                if (isCorrectChoice) {
+                  buttonClass += 'bg-green-50 dark:bg-green-900/30 border-green-500 dark:border-green-600';
+                } else if (isSelected) {
+                  buttonClass += 'bg-red-50 dark:bg-red-900/30 border-red-500 dark:border-red-600';
+                } else {
+                  buttonClass += 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 opacity-60';
+                }
+              }
+
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleAnswer(i)}
+                  disabled={selectedAnswer !== null}
+                  className={buttonClass}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                      showResult && isCorrectChoice
+                        ? 'bg-green-500 text-white'
+                        : showResult && isSelected && !isCorrectChoice
+                        ? 'bg-red-500 text-white'
+                        : 'bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300'
+                    }`}>
+                      {String.fromCharCode(65 + i)}
+                    </div>
+                    <span className={`flex-1 ${
+                      showResult && (isCorrectChoice || isSelected)
+                        ? 'font-semibold text-gray-900 dark:text-white'
+                        : 'text-gray-800 dark:text-gray-200'
+                    }`}>
+                      {choice}
+                    </span>
+                    {showResult && isCorrectChoice && (
+                      <span className="flex-shrink-0 text-green-600 dark:text-green-400 text-xl">✓</span>
+                    )}
+                    {showResult && isSelected && !isCorrectChoice && (
+                      <span className="flex-shrink-0 text-red-600 dark:text-red-400 text-xl">✗</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Explanation */}
+        {showExplanation && (
+          <div className={`rounded-2xl shadow-lg p-6 mb-6 border-l-4 ${
+            isCorrect 
+              ? 'bg-green-50 dark:bg-green-900/20 border-green-500 dark:border-green-600' 
+              : 'bg-red-50 dark:bg-red-900/20 border-red-500 dark:border-red-600'
+          }`}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className={`text-3xl ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                {isCorrect ? '✅' : '❌'}
+              </div>
+              <div className="flex-1">
+                <h3 className={`text-xl font-bold mb-2 ${
+                  isCorrect 
+                    ? 'text-green-800 dark:text-green-300' 
+                    : 'text-red-800 dark:text-red-300'
+                }`}>
+                  {isCorrect ? 'ตอบถูกต้อง!' : 'ตอบผิด'}
+                </h3>
+                {!isCorrect && (
+                  <p className="text-red-700 dark:text-red-400 text-sm mb-3">
+                    คำตอบที่ถูกต้องคือ: <strong>{q.choices[correctAnswerIndex]}</strong>
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {q.explanation && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">💡 คำอธิบาย:</p>
+                <p className="text-gray-800 dark:text-gray-200 leading-relaxed">
+                  {q.explanation}
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={handleNext}
+              className="mt-6 w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all transform hover:scale-105 shadow-lg"
+            >
+              {current + 1 === questions.length ? '🎯 ดูผลคะแนน' : 'ข้อถัดไป →'}
+            </button>
+          </div>
+        )}
+
+        {!showExplanation && (
+          <div className="text-center text-gray-500 dark:text-gray-400 text-sm">
+            💡 เลือกคำตอบที่คุณคิดว่าถูกต้อง
+          </div>
+        )}
+      </div>
     </div>
   );
 }

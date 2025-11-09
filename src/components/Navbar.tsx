@@ -2,7 +2,6 @@
 'use client'
 
 import Link from "next/link";
-import ThemeToggle from "./ThemeToggle";
 import AuthStatus from "./AuthStatus";
 import NamePrompt from "./NamePrompt";
 
@@ -22,8 +21,6 @@ export default function Navbar() {
 
             {/* Right side */}
             <div className="flex items-center gap-4">
-              {/* Theme Toggle */}
-              <ThemeToggle />
 
               {/* Auth Status */}
               <AuthStatus />
