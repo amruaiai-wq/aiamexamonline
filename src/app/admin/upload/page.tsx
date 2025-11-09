@@ -107,21 +107,24 @@ export default function UploadPage() {
               const row = jsonData[i]
               if (!row[1]) continue
               
+              const choices = [
+                row[2]?.toString() || '',
+                row[3]?.toString() || '',
+                row[4]?.toString() || '',
+                row[5]?.toString() || '',
+              ]
+
               const question: Question = {
                 question_text: row[1]?.toString() || '',
                 question_type: 'multiple_choice',
-                choices: [
-                  row[2]?.toString() || '',
-                  row[3]?.toString() || '',
-                  row[4]?.toString() || '',
-                  row[5]?.toString() || '',
-                ],
+                choices: choices,
                 correct_answer: row[6]?.toString() || '1',
                 explanation: row[7]?.toString() || null,
                 order_num: i
               }
               
-              if (question.question_text && question.choices.every(c => c)) {
+              // ✅ เช็คให้แน่ใจว่า choices ไม่เป็น null และมีข้อมูลครบ
+              if (question.question_text && question.choices && question.choices.every(c => c)) {
                 questions.push(question)
               }
             }
@@ -212,20 +215,18 @@ export default function UploadPage() {
 
   const handleCategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const category = e.target.value
-    console.log('Selected category:', category) // Debug
     setSelectedCategory(category)
     if (preview) {
       setPreview({
         ...preview,
         category: category,
-        subcategory: '' // รีเซ็ต subcategory
+        subcategory: ''
       })
     }
   }
 
   const handleSubcategoryChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const subcategory = e.target.value
-    console.log('Selected subcategory:', subcategory) // Debug
     if (preview) {
       setPreview({
         ...preview,
@@ -381,7 +382,7 @@ export default function UploadPage() {
                 </select>
               </div>
 
-              {/* หมวดหมู่ย่อย - แสดงเมื่อเลือกหมวดหลักแล้ว */}
+              {/* หมวดหมู่ย่อย */}
               {selectedCategory && getCurrentSubcategories().length > 0 && (
                 <div className="mb-6">
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
